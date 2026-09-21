@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node", "react"]
+  },
+  "include": [
+    "fixtures/**/*.ts",
+    "fixtures/**/*.tsx",
+    "fixtures/**/*.mts",
+    "fixtures/**/*.cts",
+    "fixtures/**/*.js",
+    "fixtures/**/*.jsx",
+    "fixtures/**/*.mjs",
+    "fixtures/**/*.cjs",
+    ".tmp/**/*.ts",
+    ".tmp/**/*.tsx",
+    ".tmp/**/*.mts",
+    ".tmp/**/*.cts",
+    ".tmp/**/*.js",
+    ".tmp/**/*.jsx",
+    ".tmp/**/*.mjs",
+    ".tmp/**/*.cjs"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node", "react"]
+  },
+  "include": [
+    "tests/fixtures/**/*.ts",
+    "tests/fixtures/**/*.tsx",
+    "tests/fixtures/**/*.mts",
+    "tests/fixtures/**/*.cts",
+    "tests/fixtures/**/*.js",
+    "tests/fixtures/**/*.jsx",
+    "tests/fixtures/**/*.mjs",
+    "tests/fixtures/**/*.cjs"
+  ],
+  "exclude": ["node_modules", "tmp-consumer"]
+}
