@@ -94,6 +94,8 @@ const reactDir = await writeConsumerProject("react", {
       devDependencies: {
         ...sharedDevDeps,
         "@types/react": "^19.0.0",
+      },
+      dependencies: {
         react: "^19.0.0",
       },
     },
