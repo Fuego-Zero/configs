@@ -3,6 +3,8 @@
  * 第三方 recommended 负责基础正确性；这里负责团队长期习惯与补充约束。
  */
 export const teamRules = {
+  // 代码块结束后与下一条语句之间空一行；else/catch/finally 属于同一条语句。
+  "@stylistic/padding-line-between-statements": ["error", { blankLine: "always", prev: "block-like", next: "*" }],
   "class-methods-use-this": "off",
   "consistent-return": "off",
   curly: ["error", "all"],

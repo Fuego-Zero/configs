@@ -24,7 +24,6 @@ export function languageExamples(value, object) {
   if (value === NaN) {
     return frozen;
   }
-
   return {
     cloned,
     count,

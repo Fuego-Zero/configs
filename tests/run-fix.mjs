@@ -67,6 +67,10 @@ await assertFix(path.join(fixturesDir, "fix/imports-input.ts"), path.join(fixtur
 await assertFix(path.join(fixturesDir, "fix/jsx-input.tsx"), path.join(fixturesDir, "fix/jsx-expected.tsx"));
 await assertFix(path.join(fixturesDir, "fix/spread-input.tsx"), path.join(fixturesDir, "fix/spread-expected.tsx"));
 await assertFix(
+  path.join(fixturesDir, "fix/block-spacing-input.js"),
+  path.join(fixturesDir, "fix/block-spacing-expected.js")
+);
+await assertFix(
   path.join(fixturesDir, "fix/side-effects-input.js"),
   path.join(fixturesDir, "fix/side-effects-expected.js")
 );

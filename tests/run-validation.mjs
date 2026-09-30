@@ -61,6 +61,7 @@ const invalidCases = [
   [
     "invalid/js/language.js",
     [
+      "@stylistic/padding-line-between-statements",
       "curly",
       "eqeqeq",
       "no-debugger",
