@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import stylistic from "@stylistic/eslint-plugin";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import importPlugin, { createNodeResolver } from "eslint-plugin-import-x";
 import perfectionist from "eslint-plugin-perfectionist";
@@ -97,6 +98,7 @@ export const coreConfig = [
     name: "@fuego0/configs/plugins-and-team-rules",
     files: ALL_CODE_FILES,
     plugins: {
+      "@stylistic": stylistic,
       "import-x": importPlugin,
       perfectionist,
       unicorn,

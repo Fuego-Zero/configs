@@ -1,4 +1,3 @@
-import stylistic from "@stylistic/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactJsx from "eslint-plugin-react-jsx";
 import reactX from "eslint-plugin-react-x";
@@ -90,9 +89,6 @@ export function createReactTeamLayer({ files = REACT_FILES } = {}) {
   return {
     name: "@fuego0/configs/react-team-rules",
     files,
-    plugins: {
-      "@stylistic": stylistic,
-    },
     rules: reactTeamRules,
   };
 }

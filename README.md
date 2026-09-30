@@ -51,8 +51,8 @@ export { default } from "@fuego0/configs/eslint";
 
 新项目优先显式选 `eslint/react` 或 `eslint/node`。
 
-| 入口                          | 用途                                              |
-| ----------------------------- | ------------------------------------------------- |
+| 入口                           | 用途                                              |
+| ------------------------------ | ------------------------------------------------- |
 | `@fuego0/configs/eslint/react` | React + Typed Lint                                |
 | `@fuego0/configs/eslint/node`  | Node + Typed Lint                                 |
 | `@fuego0/configs/eslint`       | browser + Node globals，并在 JSX/TSX 上启用 React |
@@ -83,6 +83,7 @@ export { default } from "@fuego0/configs/eslint";
 ## 行为摘要
 
 - **Typed Lint**：`recommendedTypeChecked` + `stylisticTypeChecked`，`projectService: true`。floating promise、unsafe `any`、misused promises 等在编辑器里就会报。
+- **逻辑段落空行**：代码块结束后，与下一条语句之间至少空一行（[Airbnb §19.7](https://github.com/airbnb/javascript#whitespace--after-blocks)）。使用 `@stylistic/padding-line-between-statements`，支持 ESLint 自动修复；`if/else` 和 `try/catch/finally` 各按一条完整语句处理，单语句分支仍须使用大括号。
 - **Import**：必须在文件顶部（directive 例外）；禁止重复；块结束后空一行；循环依赖检查（跳过 `node_modules`）。排序只由 Perfectionist 负责。
 - **JSX**：props 顺序 `key/ref` → boolean shorthand → 普通 → `aria-*`/`data-*` → `onXxx`；空组件自闭合（HTML 标签不强制）。
 - **Prettier**：`printWidth` 120，双引号，`semi`，`trailingComma: "es5"`，`arrowParens: "avoid"`，`endOfLine: "lf"`。
