@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: configs-npm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Check version change
+        id: version
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/release.mjs plan
+      - if: steps.version.outputs.publish == 'true'
+        run: npm ci
+      - name: Verify and accept release tarball
+        if: steps.version.outputs.publish == 'true'
+        env:
+          RELEASE_PACKAGE_DIR: .release-package
+        run: npm run verify
+      - uses: actions/upload-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          name: configs-npm-package
+          path: .release-package/*.tgz
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm install --global npm@11.6.2 --registry=https://registry.npmjs.org/
+      - uses: actions/download-artifact@v4
+        with:
+          name: configs-npm-package
+          path: .release-package
+      - name: Publish accepted tarball with OIDC
+        env:
+          EXPECTED_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/release.mjs publish
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
+            actual="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${PACKAGE_VERSION}" --jq '.object.sha')"
+            test "$actual" = "$RELEASE_COMMIT" || { echo "Existing release tag does not match release commit"; exit 1; }
+            exit 0
+          fi
+          if [ "$RELEASE_TAG" = next ]; then
+            gh release create "v${PACKAGE_VERSION}" --target "$RELEASE_COMMIT" --title "v${PACKAGE_VERSION}" --generate-notes --prerelease --latest=false
+          else
+            gh release create "v${PACKAGE_VERSION}" --target "$RELEASE_COMMIT" --title "v${PACKAGE_VERSION}" --generate-notes --latest
+          fi

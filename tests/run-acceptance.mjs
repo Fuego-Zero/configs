@@ -10,7 +10,8 @@ const testsDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.dirname(testsDir);
 const pkg = JSON.parse(await readFile(path.join(rootDir, "package.json"), "utf8"));
 const tarballName = `${pkg.name.replace("@", "").replace("/", "-")}-${pkg.version}.tgz`;
-const tarballPath = path.join(rootDir, tarballName);
+const packageDir = process.env.RELEASE_PACKAGE_DIR ? path.resolve(rootDir, process.env.RELEASE_PACKAGE_DIR) : rootDir;
+const tarballPath = path.join(packageDir, tarballName);
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 async function run(command, args, cwd, { allowFailure = false } = {}) {
@@ -60,7 +61,8 @@ assert.ok(fileList.includes("src/prettier.js"), "exports target src/prettier.js 
 assert.ok(fileList.includes("LICENSE"), "npm pack must include LICENSE");
 assert.ok(fileList.includes("README.md"), "npm pack must include README.md");
 
-await run(npmCommand, ["pack"], rootDir);
+await mkdir(packageDir, { recursive: true });
+await run(npmCommand, ["pack", "--pack-destination", packageDir], rootDir);
 
 const consumerRoot = path.join(rootDir, "tmp-consumer");
 await rm(consumerRoot, { force: true, recursive: true });
