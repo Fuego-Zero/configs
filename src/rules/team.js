@@ -56,6 +56,7 @@ export const typescriptTeamRules = {
 };
 
 export const reactTeamRules = {
+  "@fuego0/prefer-and-over-null-ternary": "error",
   "@stylistic/jsx-self-closing-comp": [
     "error",
     {
