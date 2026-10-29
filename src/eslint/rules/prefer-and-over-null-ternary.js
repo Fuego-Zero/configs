@@ -3,6 +3,7 @@
  * 只检查直接写在 JSX 子节点 `{...}` 里的三元表达式；赋值、函数参数、props、return 等位置
  * 拿到的是值，`&&` 在条件为假时得到 false / 0 / ""，不是 null，所以不在此规则范围内。
  * 条件不能确定是布尔值时只报错不修复，否则 `{count && <X />}` 会把 0 渲染出来。
+ * `.jsx` 没有类型信息，只有比较、`!x` 这类语法上必为布尔的条件才修复。
  */
 
 const COMPARISON_OPERATORS = new Set(["==", "!=", "===", "!==", "<", "<=", ">", ">=", "in", "instanceof"]);
@@ -128,7 +129,7 @@ const preferAndOverNullTernary = {
     messages: {
       preferAnd: "JSX 里为 null 的分支改用 &&，不要写三元表达式。",
       preferAndNonBoolean:
-        "JSX 里为 null 的分支改用 &&，不要写三元表达式。条件不是布尔值，请先写成明确的布尔条件（如 `count > 0`），否则会把 0 或空字符串渲染出来。",
+        "JSX 里为 null 的分支改用 &&，不要写三元表达式。条件不是布尔值，请先写成明确的布尔条件（如 `count > 0`），否则数字 0 会被渲染出来。",
     },
   },
   create(context) {

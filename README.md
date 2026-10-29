@@ -85,7 +85,7 @@ export { default } from "@fuego0/configs/eslint";
 - **Typed Lint**：`recommendedTypeChecked` + `stylisticTypeChecked`，`projectService: true`。floating promise、unsafe `any`、misused promises 等在编辑器里就会报。
 - **逻辑段落空行**：代码块结束后，与下一条语句之间至少空一行（[Airbnb §19.7](https://github.com/airbnb/javascript#whitespace--after-blocks)）。使用 `@stylistic/padding-line-between-statements`，支持 ESLint 自动修复；`if/else` 和 `try/catch/finally` 各按一条完整语句处理，单语句分支仍须使用大括号。
 - **Import**：必须在文件顶部（directive 例外）；禁止重复；块结束后空一行；循环依赖检查（跳过 `node_modules`）。排序只由 Perfectionist 负责。
-- **JSX**：props 顺序 `key/ref` → boolean shorthand → 普通 → `aria-*`/`data-*` → `onXxx`；空组件自闭合（HTML 标签不强制）。JSX 子节点 `{...}` 里的 `条件 ? 节点 : null` 改成 `条件 && 节点`，`条件 ? null : 节点` 改成 `!条件 && 节点`；`.length` 会改成 `.length > 0 &&`。条件不能确定是布尔值时（例如数字、字符串）只报错不自动修复，避免把 0 或空字符串渲染出来。赋值、函数参数、props、`return` 等位置拿到的是值，不检查。
+- **JSX**：props 顺序 `key/ref` → boolean shorthand → 普通 → `aria-*`/`data-*` → `onXxx`；空组件自闭合（HTML 标签不强制）。JSX 子节点 `{...}` 里的 `条件 ? 节点 : null` 改成 `条件 && 节点`，`条件 ? null : 节点` 改成 `!条件 && 节点`；`.length` 会改成 `.length > 0 &&`。条件不能确定是布尔值时（例如数字、字符串，或没有类型信息的 `.jsx`）只报错不自动修复，避免把 0 渲染出来。赋值、函数参数、props、`return` 等位置拿到的是值，不检查。
 - **Prettier**：`printWidth` 120，双引号，`semi`，`trailingComma: "es5"`，`arrowParens: "avoid"`，`endOfLine: "lf"`。
 
 覆盖层写在共享配置之后：
