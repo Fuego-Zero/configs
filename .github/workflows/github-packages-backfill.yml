@@ -1,0 +1,79 @@
+name: Backfill GitHub Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing npm version to mirror; must match main
+        required: true
+        type: string
+
+concurrency:
+  group: configs-npm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.source.outputs.version }}
+      tag: ${{ steps.source.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Fetch existing npm artifact without publishing to npm
+        id: source
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: node scripts/github-package.mjs fetch
+      - run: npm ci
+      - run: node scripts/github-package.mjs prepare
+      - name: Accept derived GitHub Packages tarball
+        env:
+          ACCEPTANCE_TARBALL: .release-package/github/fuego-zero-configs-${{ steps.source.outputs.version }}.tgz
+          ACCEPTANCE_PACKAGE_NAME: "@fuego-zero/configs"
+        run: npm run test:acceptance
+      - uses: actions/upload-artifact@v4
+        with:
+          name: configs-github-package
+          path: .release-package/github/*.tgz
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish-github:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://npm.pkg.github.com/
+          scope: "@fuego-zero"
+          package-manager-cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: configs-github-package
+          path: .release-package/github
+      - name: Publish only to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          EXPECTED_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/github-package.mjs publish

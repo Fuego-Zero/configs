@@ -134,6 +134,18 @@ npm run verify
 
 不需要把 npm token 放进 GitHub Secrets。
 
+### GitHub Packages
+
+同一发布流程额外发布 `@fuego-zero/configs` 到 `https://npm.pkg.github.com/`，并通过包内 `repository` 字段关联 `Fuego-Zero/configs`。scope 使用仓库所有者的小写名称；npmjs.com 继续使用 `@fuego0/configs`，仓库的 package.json 和版本号不会被改写。
+
+工作流从已验收的 npm tgz 派生 GitHub Packages tgz，仅改包内的 name、repository 和 publishConfig，逐文件核对其余内容完全一致，然后用 React/Node 消费者安装验收。两个仓库分别上传、下载自己的已验收产物。GitHub Packages 任务在 npm 发布和 GitHub Release 成功后运行，重复运行时检查相同版本的完整性。
+
+GitHub Packages 使用独立任务的 `packages: write` 权限，认证仅通过该步骤的 `NODE_AUTH_TOKEN: ${{ github.token }}` 读取 Actions 自动生成的 GITHUB_TOKEN，不需要长期 token 或新增 Secret。npmjs.com 的 OIDC 任务不接收这个环境变量。
+
+GitHub Packages 新包默认私有，包的可见性由 GitHub Packages 管理；工作流不会自动调整可见性。此流程仍只在 PR 合并 main 且版本变化时运行，仅合并 CI 配置不会补发已经发布的 1.2.0。
+
+补发当前 main 的已发布版本时，在 main 上手动运行 `Backfill GitHub Packages` 并填写版本号。该入口下载 npmjs.com 现有 tgz 并校验 SHA-512，派生、验收后仅发布 GitHub Packages，不重新发布 npmjs.com，也不创建或改动 GitHub Release。
+
 ## License
 
 MIT

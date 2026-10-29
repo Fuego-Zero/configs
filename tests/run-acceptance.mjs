@@ -9,9 +9,11 @@ const execFileAsync = promisify(execFile);
 const testsDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.dirname(testsDir);
 const pkg = JSON.parse(await readFile(path.join(rootDir, "package.json"), "utf8"));
+const packageName = process.env.ACCEPTANCE_PACKAGE_NAME ?? pkg.name;
+const externalTarball = process.env.ACCEPTANCE_TARBALL;
 const tarballName = `${pkg.name.replace("@", "").replace("/", "-")}-${pkg.version}.tgz`;
 const packageDir = process.env.RELEASE_PACKAGE_DIR ? path.resolve(rootDir, process.env.RELEASE_PACKAGE_DIR) : rootDir;
-const tarballPath = path.join(packageDir, tarballName);
+const tarballPath = externalTarball ? path.resolve(rootDir, externalTarball) : path.join(packageDir, tarballName);
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 async function run(command, args, cwd, { allowFailure = false } = {}) {
@@ -38,8 +40,21 @@ function listPackedFiles(packJson) {
   return (entries[0]?.files ?? []).map(file => String(file.path ?? file).replaceAll("\\", "/"));
 }
 
-const dryRun = await run(npmCommand, ["pack", "--dry-run", "--json"], rootDir);
-const fileList = listPackedFiles(dryRun.stdout);
+let fileList;
+if (externalTarball) {
+  const listing = await run("tar", ["-tzf", tarballPath], rootDir);
+  fileList = listing.stdout
+    .trim()
+    .split(/\r?\n/)
+    .map(file => file.replace(/^package\//, ""));
+  const metadata = await run("tar", ["-xOzf", tarballPath, "package/package.json"], rootDir);
+  const packed = JSON.parse(metadata.stdout);
+  assert.equal(packed.name, packageName);
+  assert.equal(packed.version, pkg.version);
+} else {
+  const dryRun = await run(npmCommand, ["pack", "--dry-run", "--json"], rootDir);
+  fileList = listPackedFiles(dryRun.stdout);
+}
 
 assert.ok(
   fileList.some(file => file.startsWith("src/")),
@@ -61,8 +76,10 @@ assert.ok(fileList.includes("src/prettier.js"), "exports target src/prettier.js 
 assert.ok(fileList.includes("LICENSE"), "npm pack must include LICENSE");
 assert.ok(fileList.includes("README.md"), "npm pack must include README.md");
 
-await mkdir(packageDir, { recursive: true });
-await run(npmCommand, ["pack", "--pack-destination", packageDir], rootDir);
+if (!externalTarball) {
+  await mkdir(packageDir, { recursive: true });
+  await run(npmCommand, ["pack", "--pack-destination", packageDir], rootDir);
+}
 
 const consumerRoot = path.join(rootDir, "tmp-consumer");
 await rm(consumerRoot, { force: true, recursive: true });
@@ -81,7 +98,7 @@ async function writeConsumerProject(name, files) {
 }
 
 const sharedDevDeps = {
-  "@fuego0/configs": `file:${tarballPath.replaceAll("\\", "/")}`,
+  [packageName]: `file:${tarballPath.replaceAll("\\", "/")}`,
   eslint: "^10.11.0",
   prettier: "^3.9.0",
   typescript: "~5.9.3",
@@ -104,8 +121,8 @@ const reactDir = await writeConsumerProject("react", {
     null,
     2
   )}\n`,
-  "eslint.config.js": `export { default } from "@fuego0/configs/eslint/react";\n`,
-  "prettier.config.js": `export { default } from "@fuego0/configs/prettier";\n`,
+  "eslint.config.js": `export { default } from "${packageName}/eslint/react";\n`,
+  "prettier.config.js": `export { default } from "${packageName}/prettier";\n`,
   "tsconfig.json": `${JSON.stringify(
     {
       compilerOptions: {
@@ -150,7 +167,7 @@ const nodeDir = await writeConsumerProject("node", {
     null,
     2
   )}\n`,
-  "eslint.config.js": `export { default } from "@fuego0/configs/eslint/node";\n`,
+  "eslint.config.js": `export { default } from "${packageName}/eslint/node";\n`,
   "tsconfig.json": `${JSON.stringify(
     {
       compilerOptions: {
@@ -220,4 +237,4 @@ assert.ok(
   "consumer Node Typed Lint should report no-floating-promises"
 );
 
-console.log(`✓ npm pack + tmp-consumer installation passed (${tarballName})`);
+console.log(`✓ tmp-consumer installation passed (${path.basename(tarballPath)}, ${packageName})`);
