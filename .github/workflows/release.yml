@@ -1,79 +1,97 @@
 name: Release
 
-# PR 合并进 main 后：版本号相对已有 tag 是新的，才跑校验、发 npm、建 GitHub Release。
-# 版本来自该次合并里的 package.json，不在这里自动升版本。
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: configs-npm-release
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
-  release:
-    name: Publish npm and GitHub Release
+  prepare:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
-          fetch-tags: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
-
-      - name: Read version
+      - name: Check version change
         id: version
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "v${version} already has a release, skipping"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "v${version} will be published"
-          fi
-
-      - name: Install
-        if: steps.version.outputs.publish == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/release.mjs plan
+      - if: steps.version.outputs.publish == 'true'
         run: npm ci
-
-      - name: Verify
-        if: steps.version.outputs.publish == 'true'
-        run: npm run verify
-
-      - name: Publish to npm
+      - name: Verify and accept release tarball
         if: steps.version.outputs.publish == 'true'
         env:
-          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          if npm view "@fuego0/configs@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-            echo "npm already has ${PACKAGE_VERSION}, skipping publish"
-          else
-            npm publish --access public
-          fi
-
-      - name: Create GitHub Release
+          RELEASE_PACKAGE_DIR: .release-package
+        run: npm run verify
+      - uses: actions/upload-artifact@v4
         if: steps.version.outputs.publish == 'true'
+        with:
+          name: configs-npm-package
+          path: .release-package/*.tgz
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm install --global npm@11.6.2 --registry=https://registry.npmjs.org/
+      - uses: actions/download-artifact@v4
+        with:
+          name: configs-npm-package
+          path: .release-package
+      - name: Publish accepted tarball with OIDC
+        env:
+          EXPECTED_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/release.mjs publish
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           set -euo pipefail
-          gh release create "v${PACKAGE_VERSION}" \
-            --title "v${PACKAGE_VERSION}" \
-            --generate-notes \
-            --latest
+          if gh release view "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
+            actual="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${PACKAGE_VERSION}" --jq '.object.sha')"
+            test "$actual" = "$RELEASE_COMMIT" || { echo "Existing release tag does not match release commit"; exit 1; }
+            exit 0
+          fi
+          if [ "$RELEASE_TAG" = next ]; then
+            gh release create "v${PACKAGE_VERSION}" --target "$RELEASE_COMMIT" --title "v${PACKAGE_VERSION}" --generate-notes --prerelease --latest=false
+          else
+            gh release create "v${PACKAGE_VERSION}" --target "$RELEASE_COMMIT" --title "v${PACKAGE_VERSION}" --generate-notes --latest
+          fi
