@@ -5,6 +5,7 @@ import globals from "globals";
 
 import { reactTeamRules } from "../rules/team.js";
 import { ALL_CODE_FILES, REACT_FILES } from "./core.js";
+import { fuegoPlugin } from "./plugin.js";
 
 const JSX_FILES = ["**/*.jsx"];
 const TSX_FILES = ["**/*.tsx"];
@@ -89,6 +90,9 @@ export function createReactTeamLayer({ files = REACT_FILES } = {}) {
   return {
     name: "@fuego0/configs/react-team-rules",
     files,
+    plugins: {
+      "@fuego0": fuegoPlugin,
+    },
     rules: reactTeamRules,
   };
 }

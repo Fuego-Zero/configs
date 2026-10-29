@@ -65,6 +65,10 @@ async function assertPrettier(inputPath, expectedPath) {
 
 await assertFix(path.join(fixturesDir, "fix/imports-input.ts"), path.join(fixturesDir, "fix/imports-expected.ts"));
 await assertFix(path.join(fixturesDir, "fix/jsx-input.tsx"), path.join(fixturesDir, "fix/jsx-expected.tsx"));
+await assertFix(
+  path.join(fixturesDir, "fix/null-ternary-input.tsx"),
+  path.join(fixturesDir, "fix/null-ternary-expected.tsx")
+);
 await assertFix(path.join(fixturesDir, "fix/spread-input.tsx"), path.join(fixturesDir, "fix/spread-expected.tsx"));
 await assertFix(
   path.join(fixturesDir, "fix/block-spacing-input.js"),

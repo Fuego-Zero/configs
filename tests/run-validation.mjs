@@ -154,6 +154,7 @@ const invalidCases = [
     "invalid/react/hooks.tsx",
     ["react-hooks/rules-of-hooks", "react-hooks/set-state-in-effect", "react-hooks/set-state-in-render"],
   ],
+  ["invalid/react/null-ternary.tsx", ["@fuego0/prefer-and-over-null-ternary"]],
   [
     "invalid/react/jsx.tsx",
     [
