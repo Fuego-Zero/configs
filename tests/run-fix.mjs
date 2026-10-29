@@ -8,6 +8,7 @@ import * as prettier from "prettier";
 
 import prettierConfig from "../src/prettier.js";
 import { createNodeLint, createReactLint, relative } from "./lint-utils.mjs";
+import "./null-ternary-rule.mjs";
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(testsDir, "fixtures");

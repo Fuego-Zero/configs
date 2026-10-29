@@ -106,6 +106,17 @@ function isRenderSafeType(type, checker, flags) {
   }
 
   if (type.flags & flags.Object) {
+    const primitives = [
+      checker.getNumberType(),
+      checker.getStringType(),
+      checker.getBigIntType(),
+      checker.getESSymbolType(),
+    ];
+
+    if (primitives.some(primitive => checker.isTypeAssignableTo(primitive, type))) {
+      return false;
+    }
+
     if (type.getCallSignatures().length > 0 || type.getConstructSignatures().length > 0) {
       return true;
     }
@@ -120,13 +131,13 @@ function createConditionCheck(sourceCode) {
   const services = sourceCode.parserServices;
 
   if (!services?.program || !services.esTreeNodeToTSNodeMap) {
-    return isBooleanSyntax;
+    return { isRenderSafe: isBooleanSyntax, isSafeLength: () => false };
   }
 
   const { TypeFlags } = require("typescript");
   const checker = services.program.getTypeChecker();
 
-  return node => {
+  function isRenderSafe(node) {
     if (isBooleanSyntax(node)) {
       return true;
     }
@@ -134,6 +145,29 @@ function createConditionCheck(sourceCode) {
     const tsNode = services.esTreeNodeToTSNodeMap.get(node);
 
     return Boolean(tsNode) && isRenderSafeType(checker.getTypeAtLocation(tsNode), checker, TypeFlags);
+  }
+
+  function isLengthReceiver(type) {
+    if (type.isUnion()) {
+      return type.types.every(isLengthReceiver);
+    }
+
+    if (type.flags & TypeFlags.TypeParameter) {
+      const constraint = checker.getBaseConstraintOfType(type);
+
+      return Boolean(constraint) && constraint !== type && isLengthReceiver(constraint);
+    }
+
+    return Boolean(type.flags & TypeFlags.StringLike) || checker.isArrayType(type) || checker.isTupleType(type);
+  }
+
+  return {
+    isRenderSafe,
+    isSafeLength(node) {
+      const tsNode = services.esTreeNodeToTSNodeMap.get(node.object);
+
+      return Boolean(tsNode) && isLengthReceiver(checker.getTypeAtLocation(tsNode));
+    },
   };
 }
 
@@ -160,7 +194,7 @@ const preferAndOverNullTernary = {
   },
   create(context) {
     const { sourceCode } = context;
-    const isRenderSafe = createConditionCheck(sourceCode);
+    const { isRenderSafe, isSafeLength } = createConditionCheck(sourceCode);
 
     function negateTest(node) {
       const text = sourceCode.getText(node);
@@ -182,7 +216,7 @@ const preferAndOverNullTernary = {
         return negateTest(node);
       }
 
-      if (isLengthAccess(node)) {
+      if (isLengthAccess(node) && isSafeLength(node)) {
         return `${text} > 0`;
       }
 
