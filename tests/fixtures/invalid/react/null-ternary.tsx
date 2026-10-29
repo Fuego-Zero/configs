@@ -1,3 +1,3 @@
-export function Missing({ ready }: { ready: boolean }) {
-  return ready ? <span>ready</span> : null;
+export function Missing({ count }: { count: number }) {
+  return <div>{count ? <span>{count}</span> : null}</div>;
 }
