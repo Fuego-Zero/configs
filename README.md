@@ -114,6 +114,26 @@ npm run verify
 
 故意违规的夹具在 `tests/fixtures/invalid/`，不进 npm 包。
 
+## 发版
+
+版本号写在要合并的 PR 里，同时改 `package.json` 和 `package-lock.json`。PR 合并进 `main` 后，如果还没有对应的 `vX.Y.Z` 标签，[Release 工作流](.github/workflows/release.yml) 会：
+
+1. 跑 `npm run verify`
+2. 把这个版本发到 npm
+3. 在仓库 Releases 新增 `vX.Y.Z`，并标成 Latest
+
+版本没变就什么都不做。校验失败则不发 npm，也不建 Release。
+
+第一次发版前，在 npm 上给 `@fuego0/configs` 添加 Trusted Publisher，字段必须和仓库完全一致：
+
+- Organization or user：`Fuego-Zero`
+- Repository：`configs`
+- Workflow filename：`release.yml`（只写文件名）
+- Environment：留空
+- 允许直接 `npm publish`。只开 staged publish 时，这个工作流发不出版
+
+不需要把 npm token 放进 GitHub Secrets。
+
 ## License
 
 MIT

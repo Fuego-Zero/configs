@@ -1,0 +1,79 @@
+name: Release
+
+# PR 合并进 main 后：版本号相对已有 tag 是新的，才跑校验、发 npm、建 GitHub Release。
+# 版本来自该次合并里的 package.json，不在这里自动升版本。
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Publish npm and GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Read version
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "v${version} already has a release, skipping"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "v${version} will be published"
+          fi
+
+      - name: Install
+        if: steps.version.outputs.publish == 'true'
+        run: npm ci
+
+      - name: Verify
+        if: steps.version.outputs.publish == 'true'
+        run: npm run verify
+
+      - name: Publish to npm
+        if: steps.version.outputs.publish == 'true'
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "@fuego0/configs@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "npm already has ${PACKAGE_VERSION}, skipping publish"
+          else
+            npm publish --access public
+          fi
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "v${PACKAGE_VERSION}" \
+            --title "v${PACKAGE_VERSION}" \
+            --generate-notes \
+            --latest
