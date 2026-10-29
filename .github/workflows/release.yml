@@ -42,11 +42,27 @@ jobs:
         env:
           RELEASE_PACKAGE_DIR: .release-package
         run: npm run verify
+      - name: Derive GitHub Packages tarball from accepted npm artifact
+        if: steps.version.outputs.publish == 'true'
+        run: node scripts/github-package.mjs prepare
+      - name: Accept GitHub Packages tarball
+        if: steps.version.outputs.publish == 'true'
+        env:
+          ACCEPTANCE_TARBALL: .release-package/github/fuego-zero-configs-${{ steps.version.outputs.version }}.tgz
+          ACCEPTANCE_PACKAGE_NAME: "@fuego-zero/configs"
+        run: npm run test:acceptance
       - uses: actions/upload-artifact@v4
         if: steps.version.outputs.publish == 'true'
         with:
           name: configs-npm-package
           path: .release-package/*.tgz
+          include-hidden-files: true
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          name: configs-github-package
+          path: .release-package/github/*.tgz
           include-hidden-files: true
           if-no-files-found: error
 
@@ -95,3 +111,33 @@ jobs:
           else
             gh release create "v${PACKAGE_VERSION}" --target "$RELEASE_COMMIT" --title "v${PACKAGE_VERSION}" --generate-notes --latest
           fi
+
+  publish-github:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://npm.pkg.github.com/
+          scope: "@fuego-zero"
+          package-manager-cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: configs-github-package
+          path: .release-package/github
+      - name: Publish accepted GitHub Packages tarball
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          EXPECTED_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/github-package.mjs publish
